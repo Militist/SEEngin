@@ -1,10 +1,13 @@
 package searchengine.model;
 
+import lombok.Data;
+
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "site")
+@Data
 public class Site {
 
     @Id
@@ -24,5 +27,5 @@ public class Site {
     private String url;
 
     @Column(name = "name", columnDefinition = "VARCHAR(255)")
-    private String name
+    private String name;
 }
