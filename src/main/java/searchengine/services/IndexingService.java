@@ -5,6 +5,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import searchengine.config.Site;
+import searchengine.config.SitesList;
 import searchengine.model.Page;
 import searchengine.model.SiteEntity;
 import searchengine.model.Status;
@@ -16,7 +18,6 @@ import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,10 +32,15 @@ public class IndexingService {
 
     private final ExecutorService executorService = Executors.newCachedThreadPool();
 
+    private SitesList sitesList;
+
     public void indexAllSites() {
-        List<SiteEntity> sites = siteRepository.findAll();
-        for (SiteEntity site : sites) {
-            executorService.submit(() -> indexSite(site));
+
+        List<Site> sites = sitesList.getSites();
+
+        for (Site site : sites) {
+            SiteEntity siteEntity = Converter.toSiteEntity(site);
+            executorService.submit(() -> indexSite(siteEntity));
         }
     }
 
