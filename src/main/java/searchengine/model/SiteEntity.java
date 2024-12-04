@@ -8,14 +8,14 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "site")
 @Data
-public class Site {
+public class SiteEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
     @Enumerated(EnumType.STRING)
-    private TextFields type;
+    private Status type;
 
     @Column(name = "status_time")
     private LocalDateTime statusTime; // Используем LocalDateTime

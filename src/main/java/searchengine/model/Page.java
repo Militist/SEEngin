@@ -11,7 +11,8 @@ import javax.persistence.*;
 @Data
 public class Page {
 
-    @Id@GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
     @Column(name = "path")

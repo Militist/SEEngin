@@ -1,17 +1,19 @@
 package searchengine.model;
 
-public enum TextFields {
+
+public enum Status {
     INDEXING("Indexing"),
     INDEXED("Indexed"),
     FAILED("Failed");
 
     private final String type;
 
-    TextFields(String type) {
+    Status(String type) {
         this.type = type;
     }
 
     public String getType(String type) {
         return type;
     }
+
 }
