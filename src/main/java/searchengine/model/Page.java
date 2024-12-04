@@ -23,4 +23,9 @@ public class Page {
 
     @Column(name = "content", columnDefinition = "TEXT")
     private String content;
+
+    @ManyToOne
+    @JoinColumn(name = "site_id")
+    private SiteEntity siteEntity;
+
 }

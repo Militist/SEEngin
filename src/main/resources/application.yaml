@@ -22,3 +22,7 @@ indexing-settings:
       name: Skillbox
     - url: https://www.playback.ru
       name: PlayBack.Ru
+
+logging:
+  level:
+    org.springframework: DEBUG
