@@ -30,18 +30,15 @@ public class IndexingController {
             ));
         }
 
-        indexingInProgress.set(true); // Установим флаг индексации в true
+        indexingInProgress.set(true);
 
-        // Запустим индексацию в отдельном потоке
         ForkJoinPool.commonPool().submit(() -> {
             try {
-                // Тут можно вызвать метод, который осуществляет индексацию.
                 indexingService.indexAllSites();
             } catch (Exception e) {
-                // Логируем или обрабатываем ошибку
-                // Например, устанавливаем индексацию как неудавшуюся
+
             } finally {
-                indexingInProgress.set(false); // Сбрасываем флаг в конце работы (успех или ошибка)
+                indexingInProgress.set(false);
             }
         });
 

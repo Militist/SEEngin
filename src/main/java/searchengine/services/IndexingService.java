@@ -21,8 +21,10 @@ import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+
 @Service
 public class IndexingService {
+
 
     @Autowired
     private SiteRepository siteRepository;
@@ -45,6 +47,7 @@ public class IndexingService {
     }
 
     private void indexSite(SiteEntity site) {
+        System.out.println("Starting indexing all sites...");
         Queue<String> toVisit = new LinkedList<>();
         toVisit.add(site.getUrl());
 
@@ -59,30 +62,34 @@ public class IndexingService {
                     page.setPath(currentUrl.substring(site.getUrl().length()));
                     page.setCode(200);
                     page.setContent(content);
+                    System.out.println("Saving page for URL: " + currentUrl);
                     pageRepository.save(page);
+                    System.out.println("Saved page successfully");
 
                     site.setStatusTime(LocalDateTime.now());
+
+                    System.out.println("Saving site: " + site);
                     siteRepository.save(site);
+                    System.out.println("Saved site successfully");
 
                     for (Element link : doc.select("a[href]")) {
                         String absHref = link.attr("abs:href");
                         toVisit.add(absHref);
                     }
                 } catch (IOException e) {
-                    // Если произошла ошибка, устанавливаем статус FAILED и записываем ошибку
+                    System.err.println("IOException occurred: " + e.getMessage());
                     handleFailure(site, "Ошибка при обработке URL " + currentUrl + ": " + e.getMessage());
                     deleteSiteData(site.getId());
                     return;
                 }
             }
 
-            // Обновляем статус сайта на INDEXED по завершении индексации
             site.setType(Status.INDEXED);
-            site.setStatusTime(LocalDateTime.now()); // обновляем время статуса, если требуется
-            siteRepository.save(site); // Сохраняем изменение статуса в базе данных
+            site.setStatusTime(LocalDateTime.now());
+            siteRepository.save(site);
 
         } catch (Exception e) {
-
+            System.err.println("Unexpected error occurred: " + e.getMessage());
             handleFailure(site, "Общая ошибка: " + e.getMessage());
             deleteSiteData(site.getId());
         }
