@@ -16,6 +16,9 @@ import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Service
 public class IndexingService {
@@ -26,10 +29,12 @@ public class IndexingService {
     @Autowired
     private PageRepository pageRepository;
 
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
+
     public void indexAllSites() {
         List<SiteEntity> sites = siteRepository.findAll();
         for (SiteEntity site : sites) {
-            indexSite(site);
+            executorService.submit(() -> indexSite(site));
         }
     }
 
@@ -59,10 +64,8 @@ public class IndexingService {
                     }
                 } catch (IOException e) {
                     // Если произошла ошибка, устанавливаем статус FAILED и записываем ошибку
-                    site.setType(Status.FAILED);
-                    site.setLastError("Ошибка при обработке URL " + currentUrl + ": " + e.getMessage());
-                    site.setStatusTime(LocalDateTime.now());
-                    siteRepository.save(site);
+                    handleFailure(site, "Ошибка при обработке URL " + currentUrl + ": " + e.getMessage());
+                    deleteSiteData(site.getId());
                     return;
                 }
             }
@@ -74,10 +77,8 @@ public class IndexingService {
 
         } catch (Exception e) {
 
-            site.setType(Status.FAILED);
-            site.setLastError("Общая ошибка: " + e.getMessage());
-            site.setStatusTime(LocalDateTime.now());
-            siteRepository.save(site);
+            handleFailure(site, "Общая ошибка: " + e.getMessage());
+            deleteSiteData(site.getId());
         }
 
     }
@@ -88,11 +89,14 @@ public class IndexingService {
         site.setLastError(errorMessage);
         site.setStatusTime(LocalDateTime.now());
         siteRepository.save(site);
+
     }
 
     private void deleteSiteData(int siteId) {
+
         pageRepository.deleteBySiteId(siteId);
         siteRepository.deleteById(siteId);
+
     }
 
 }
