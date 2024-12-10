@@ -21,6 +21,7 @@ public class IndexingController {
 
     private final AtomicBoolean indexingInProgress = new AtomicBoolean(false);
 
+
     @GetMapping("/startIndexing")
     public ResponseEntity<Map<String, Object>> startIndexing() {
         if (indexingInProgress.get()) {
@@ -31,17 +32,25 @@ public class IndexingController {
         }
 
         indexingInProgress.set(true);
+        Map<String, Object> response = new HashMap<>();
 
         ForkJoinPool.commonPool().submit(() -> {
             try {
                 indexingService.indexAllSites();
+                response.put("result", true);
+                response.put("message", "Индексация завершена успешно");
+                System.out.println("Метод был запущен");
             } catch (Exception e) {
-
+                response.put("result", false);
+                response.put("error", "Ошибка во время индексации: " + e.getMessage());
+                System.err.println("Ошибка во время индексации: " + e.getMessage());
+                e.printStackTrace();
             } finally {
                 indexingInProgress.set(false);
             }
         });
 
-        return ResponseEntity.ok(Map.of("result", true));
+        return ResponseEntity.ok(Map.of("result", true, "message", "Индексация запущена"));
+
     }
 }
