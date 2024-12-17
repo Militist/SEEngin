@@ -1,6 +1,8 @@
 package searchengine.services;
 
+import searchengine.config.Page;
 import searchengine.config.Site;
+import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 
 public class Converter {
@@ -40,6 +42,15 @@ public class Converter {
     private static boolean isValidUrl(String url) {
         // Простейшая проверка URL, можно использовать более сложную
         return url.startsWith("http") || url.startsWith("https");
+    }
+
+    public static PageEntity toPageEntity(Page page, SiteEntity siteEntity) {
+        PageEntity pageEntity = new PageEntity();
+        pageEntity.setSiteEntity(siteEntity);
+        pageEntity.setPath(siteEntity.getUrl());
+        pageEntity.setCode(page.getCode());
+        pageEntity.setContent(page.getContent());
+        return pageEntity;
     }
 
 }

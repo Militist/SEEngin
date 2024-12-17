@@ -4,8 +4,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-import searchengine.model.Page;
+import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.repositories.PageRepository;
 
@@ -14,7 +13,6 @@ import java.net.MalformedURLException;
 import java.util.List;
 import java.util.concurrent.RecursiveAction;
 
-@Component
 public class Data extends RecursiveAction {
 
     @Autowired
@@ -27,12 +25,14 @@ public class Data extends RecursiveAction {
     private Document document;
     private SiteEntity siteEntity;
 
-    public Data(List<Element> tempList, Integer start, Integer end, Document document, SiteEntity siteEntity) {
+    public Data(List<Element> tempList, Integer start, Integer end, Document document, SiteEntity siteEntity,
+                PageRepository pageRepository) {
         this.tempList = tempList;
         this.start = start;
         this.end = end;
         this.document = document;
         this.siteEntity = siteEntity;
+        this.pageRepository = pageRepository;
     }
 
     @Override
@@ -43,8 +43,8 @@ public class Data extends RecursiveAction {
             }
         } else {
             int mid = (start + end) / 2;
-            Data leftTask = new Data(tempList, start, mid, document, siteEntity);
-            Data rightTask = new Data(tempList, mid, end, document, siteEntity);
+            Data leftTask = new Data(tempList, start, mid, document, siteEntity, pageRepository);
+            Data rightTask = new Data(tempList, mid, end, document, siteEntity, pageRepository);
             leftTask.fork();
             rightTask.compute();
             leftTask.join();
@@ -52,6 +52,10 @@ public class Data extends RecursiveAction {
     }
 
     private void getPageStructure(int index) {
+        if (index < 0 || index >= tempList.size()) {
+            System.out.println("Index " + index + " is out of bounds for tempList of size " + tempList.size());
+            return;
+        }
         Element element = tempList.get(index);
         if (element == null) {
             System.out.println("Element at index " + index + " is null.");
@@ -87,9 +91,16 @@ public class Data extends RecursiveAction {
             return;
         }
 
-        Page page = new Page();
+        PageEntity page = new PageEntity();
         page.setId(siteEntity.getId());
-        page.setPath(url.substring(siteEntity.getUrl().length()));
+        String baseUrl = siteEntity.getUrl();
+        if (url.length() >= baseUrl.length()) {
+            page.setPath(url.substring(baseUrl.length()));
+        } else {
+            System.out.println("Not enough length in URL to extract path: " + url);
+            return;
+
+        }
         page.setCode(statusCode);
         page.setContent(content);
         pageRepository.save(page);

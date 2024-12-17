@@ -9,13 +9,13 @@ import javax.persistence.*;
         @Index(name = "idx_page_path", columnList = "path")
 })
 @Data
-public class Page {
+public class PageEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    @Column(name = "path")
+    @Column(name = "path", columnDefinition = "TEXT")
     private String path;
 
     @Column(name = "code")

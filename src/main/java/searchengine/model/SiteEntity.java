@@ -23,9 +23,9 @@ public class SiteEntity {
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
-    @Column(name = "url", columnDefinition = "VARCHAR(255)")
+    @Column(name = "url", columnDefinition = "TEXT")
     private String url;
 
-    @Column(name = "name", columnDefinition = "VARCHAR(255)")
+    @Column(name = "name", columnDefinition = "TEXT")
     private String name;
 }

@@ -6,8 +6,10 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import searchengine.config.Page;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
+import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.model.Status;
 import searchengine.repositories.PageRepository;
@@ -22,6 +24,8 @@ import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -39,7 +43,7 @@ public class IndexingService {
     @Autowired
     private SitesList sitesList;
 
-    public synchronized void indexAllSites() {
+    public void indexAllSites() {
 
         List<Site> sites = sitesList.getSites();
 
@@ -72,7 +76,7 @@ public class IndexingService {
         }
 
         toVisit.add(siteUrl);
-        int maxDepth = 2;
+        int maxDepth = 3;
 
         try {
             while (!toVisit.isEmpty()) {
@@ -84,24 +88,20 @@ public class IndexingService {
                             .referrer("http://www.google.com")
                             .method(Connection.Method.GET)
                             .get();
+
+                    SiteEntity siteEntity = new SiteEntity();
+                    siteEntity.setType(Status.INDEXING);
+                    siteEntity.setStatusTime(LocalDateTime.now());
+                    siteEntity.setUrl(doc.baseUri());
+                    siteEntity.setName(doc.title());
+                    siteRepository.save(siteEntity);
+
                     SiteCrawler crawler = new SiteCrawler(maxDepth);
-                    crawler.getPageLinks(currentUrl, 0);
+                    crawler.getPageLinks(currentUrl);
 
-                    ForkJoinPool pool = new ForkJoinPool();
-                    List<Element> elementList = new ArrayList<>(crawler.getLinks());
-                    Data dataTask = new Data(elementList, 0, elementList.size(), doc, site);
+                    sendToDatabase(siteEntity);
+                    shutdown();
 
-                    pool.invoke(dataTask);
-
-                    site.setName(doc.title());
-                    site.setStatusTime(LocalDateTime.now());
-
-                    for (Element link : doc.select("a[href]")) {
-                        String absHref = link.attr("abs:href");
-                        if (absHref != null && !absHref.isEmpty()) {
-                            toVisit.add(absHref);
-                        }
-                    }
                 } catch (IOException e) {
                     System.err.println("IOException occurred: " + e.getMessage());
                     handleFailure(site, "Ошибка при обработке URL " + currentUrl + ": " + e.getMessage());
@@ -145,4 +145,26 @@ public class IndexingService {
 
     }
 
+    private void sendToDatabase(SiteEntity siteEntity) {
+        List<PageEntity> resultList = CrawTask.getAllPagesList()
+                .stream()
+                .map(page -> Converter.toPageEntity(page, siteEntity))
+                .collect(Collectors.toList());
+
+        pageRepository.saveAll(resultList);
+    }
+
+
+    public void shutdown() {
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+        }
+
+
+    }
 }
