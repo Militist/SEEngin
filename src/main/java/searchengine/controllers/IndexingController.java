@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import searchengine.services.IndexingService;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -32,7 +33,7 @@ public class IndexingController {
         }
 
         indexingInProgress.set(true);
-        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> response = new ConcurrentHashMap<>();
 
         ForkJoinPool.commonPool().submit(() -> {
             try {
@@ -52,5 +53,22 @@ public class IndexingController {
 
         return ResponseEntity.ok(Map.of("result", true, "message", "Indexing is running"));
 
+    }
+
+    @GetMapping("/stopIndexing")
+    public ResponseEntity<Map<String, Object>> stopIndexing() {
+        if (!indexingInProgress.get()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "result", false,
+                    "error", "Indexing is not running"
+            ));
+        }
+
+        indexingService.shotDownNow();
+
+        indexingInProgress.set(false);
+        Map<String, Object> response = Map.of("result", true);
+
+        return ResponseEntity.ok(response);
     }
 }

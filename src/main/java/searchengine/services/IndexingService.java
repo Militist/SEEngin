@@ -163,4 +163,8 @@ public class IndexingService {
             executorService.shutdownNow();
         }
     }
+
+    public void shotDownNow() {
+        executorService.shutdownNow();
+    }
 }
