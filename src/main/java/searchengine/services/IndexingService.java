@@ -17,13 +17,11 @@ import searchengine.repositories.SiteRepository;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -63,6 +61,7 @@ public class IndexingService {
                 System.err.println("Error converting Site to SiteEntity: " + e.getMessage());
             }
         }
+        shutdown();
     }
 
     private void indexSite(SiteEntity site) {
@@ -100,7 +99,6 @@ public class IndexingService {
                     crawler.getPageLinks(currentUrl);
 
                     sendToDatabase(siteEntity);
-                    shutdown();
 
                 } catch (IOException e) {
                     System.err.println("IOException occurred: " + e.getMessage());
@@ -117,6 +115,7 @@ public class IndexingService {
             }
 
             site.setType(Status.INDEXED);
+            site.setStatusTime(LocalDateTime.now());
             siteRepository.save(site);
             System.out.println("Saved site successfully: " + site);
 
@@ -154,7 +153,6 @@ public class IndexingService {
         pageRepository.saveAll(resultList);
     }
 
-
     public void shutdown() {
         executorService.shutdown();
         try {
@@ -164,7 +162,5 @@ public class IndexingService {
         } catch (InterruptedException e) {
             executorService.shutdownNow();
         }
-
-
     }
 }

@@ -27,7 +27,7 @@ public class IndexingController {
         if (indexingInProgress.get()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "result", false,
-                    "error", "Индексация уже запущена"
+                    "error", "Indexing is already running"
             ));
         }
 
@@ -38,19 +38,19 @@ public class IndexingController {
             try {
                 indexingService.indexAllSites();
                 response.put("result", true);
-                response.put("message", "Индексация завершена успешно");
-                System.out.println("Метод был запущен");
+                response.put("message", "Indexing completed successfully");
+                System.out.println("The method has been launched");
             } catch (Exception e) {
                 response.put("result", false);
-                response.put("error", "Ошибка во время индексации: " + e.getMessage());
-                System.err.println("Ошибка во время индексации: " + e.getMessage());
+                response.put("error", "Error during indexing: " + e.getMessage());
+                System.err.println("Error during indexing:: " + e.getMessage());
                 e.printStackTrace();
             } finally {
                 indexingInProgress.set(false);
             }
         });
 
-        return ResponseEntity.ok(Map.of("result", true, "message", "Индексация запущена"));
+        return ResponseEntity.ok(Map.of("result", true, "message", "Indexing is running"));
 
     }
 }

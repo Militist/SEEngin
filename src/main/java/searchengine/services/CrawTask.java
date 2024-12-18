@@ -77,7 +77,7 @@ public class CrawTask extends RecursiveAction {
             Thread.sleep(2000);
 
         } catch (IOException e) {
-            System.out.println("Ошибка доступа '" + url + "': " + e.getMessage());
+            System.out.println("access error '" + url + "': " + e.getMessage());
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

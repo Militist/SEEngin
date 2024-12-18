@@ -18,7 +18,7 @@ public class SiteEntity {
     private Status type;
 
     @Column(name = "status_time")
-    private LocalDateTime statusTime; // Используем LocalDateTime
+    private LocalDateTime statusTime;
 
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
