@@ -4,6 +4,9 @@ import searchengine.config.Page;
 import searchengine.config.Site;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
+import searchengine.model.Status;
+
+import java.time.LocalDateTime;
 
 public class Converter {
 
@@ -47,7 +50,7 @@ public class Converter {
     public static PageEntity toPageEntity(Page page, SiteEntity siteEntity) {
         PageEntity pageEntity = new PageEntity();
         pageEntity.setSiteEntity(siteEntity);
-        pageEntity.setPath(siteEntity.getUrl());
+        pageEntity.setPath(page.getPath());
         pageEntity.setCode(page.getCode());
         pageEntity.setContent(page.getContent());
         return pageEntity;

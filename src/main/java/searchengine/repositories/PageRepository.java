@@ -7,10 +7,16 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.model.PageEntity;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface PageRepository extends JpaRepository<PageEntity, Integer> {
 
     @Modifying
     @Transactional
     @Query("DELETE FROM PageEntity p WHERE p.siteEntity.id = :siteId")
     void deleteBySiteId(@Param("siteId")int siteId);
+
+    @Query("SELECT p FROM PageEntity p WHERE p.path = :path")
+    Optional<PageEntity> findByUrl(@Param("path") String path);
 }

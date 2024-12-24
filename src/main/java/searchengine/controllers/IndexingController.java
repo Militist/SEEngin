@@ -2,11 +2,13 @@ package searchengine.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import searchengine.config.Page;
+import searchengine.model.PageEntity;
+import searchengine.repositories.PageRepository;
 import searchengine.services.IndexingService;
+import searchengine.services.PageService;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,6 +21,10 @@ public class IndexingController {
 
     @Autowired
     private IndexingService indexingService;
+    @Autowired
+    private PageService pageService;
+    @Autowired
+    private PageRepository pageRepository;
 
     private final AtomicBoolean indexingInProgress = new AtomicBoolean(false);
 
@@ -70,5 +76,28 @@ public class IndexingController {
         Map<String, Object> response = Map.of("result", true);
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/indexPage")
+    public ResponseEntity<Map<String, Object>> addOrUpdatePage(@RequestParam String url) {
+        if (!pageService.doesPageExist(url)) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "result", false,
+                    "error", "Данная страница находится за пределами сайтов, \n" +
+                            "указанных в конфигурационном файле\n" + url
+            ));
+        }
+        return ResponseEntity.ok(Map.of("result", true));
+
+    }
+
+    @GetMapping("/identityPages")
+    public ResponseEntity<List<String>> identityPages(@RequestParam String url) {
+        List<String> duplicatedPages = pageService.getListPages(url);
+
+        if (duplicatedPages.isEmpty()) {
+            return ResponseEntity.ok(List.of("No duplicate pages found."));
+        }
+        return ResponseEntity.ok(duplicatedPages);
     }
 }
