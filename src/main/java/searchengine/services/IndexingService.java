@@ -9,13 +9,14 @@ import searchengine.model.Status;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 
 @Service
@@ -31,6 +32,7 @@ public class IndexingService {
     private final ExecutorService executorService = Executors.newCachedThreadPool();
     @Autowired
     private SitesList sitesList;
+    private SiteEntity siteEntity;
 
     public void indexAllSites() {
 
@@ -44,13 +46,14 @@ public class IndexingService {
         System.out.println("Starting indexing all sites from thread: " + Thread.currentThread().getName());
 
         for (Site site : sites) {
-            try {
 
-                executorService.submit(() -> indexSite(site));
-
-            } catch (IllegalArgumentException e) {
-                System.err.println("Error converting Site to SiteEntity: " + e.getMessage());
-            }
+            executorService.submit(() -> {
+                try {
+                    indexSite(site);
+                } catch (Exception e) {
+                    System.err.println("Error indexing site " + site.getName() + ": " + e.getMessage());
+                }
+            });
         }
         shutdown();
     }
@@ -67,7 +70,7 @@ public class IndexingService {
 
         toVisit.add(siteUrl);
         int maxDepth = 3;
-        SiteEntity siteEntity = new SiteEntity();
+        SiteEntity siteEntity;
 
         try {
             siteEntity = Converter.toSiteEntity(site);
@@ -83,12 +86,20 @@ public class IndexingService {
             String currentUrl;
             while (!toVisit.isEmpty()) {
                 currentUrl = toVisit.poll();
+                System.out.println("Обработка URL: " + currentUrl);
                 siteRepository.save(siteEntity);
 
                 SiteCrawler crawler = new SiteCrawler(maxDepth);
-                crawler.getPageLinks(currentUrl);
-
-                CrawTask.createMapUniqueLinks(siteEntity, pageRepository);
+                try {
+                    if (isSiteAvailable(currentUrl)) {
+                        crawler.getPageLinks(currentUrl);
+                    } else {
+                        System.out.println("Сайт недоступен, пропускаем " + currentUrl);
+                    }
+                } catch (Exception e) {
+                    System.err.println("Ошибка при получении страниц из " + currentUrl + ": " + e.getMessage());
+                    continue;
+                }
 
             }
 
@@ -98,7 +109,7 @@ public class IndexingService {
             System.out.println("Saved site successfully: " + site);
 
         } catch (Exception e) {
-            System.err.println("Ошибка при обработке URL: " + e.getMessage());
+            System.err.println("Ошибка при обработке URL тут: " + e.getMessage());
             handleFailure(siteEntity, "Общая ошибка: " + e.getMessage());
             deleteSiteData(siteEntity.getId());
         }
@@ -134,5 +145,20 @@ public class IndexingService {
 
     public void shotDownNow() {
         executorService.shutdownNow();
+    }
+
+    private boolean isSiteAvailable(String url) {
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+            connection.setRequestMethod("HEAD");
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+            int responseCode = connection.getResponseCode();
+            return responseCode == 200;
+        } catch (IOException e) {
+            System.out.println("Сайт недоступен URL: " + url);
+            return false;
+        }
+
     }
 }

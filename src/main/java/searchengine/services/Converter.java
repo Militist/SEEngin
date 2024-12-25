@@ -4,9 +4,6 @@ import searchengine.config.Page;
 import searchengine.config.Site;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
-import searchengine.model.Status;
-
-import java.time.LocalDateTime;
 
 public class Converter {
 
@@ -43,7 +40,6 @@ public class Converter {
     }
 
     private static boolean isValidUrl(String url) {
-        // Простейшая проверка URL, можно использовать более сложную
         return url.startsWith("http") || url.startsWith("https");
     }
 

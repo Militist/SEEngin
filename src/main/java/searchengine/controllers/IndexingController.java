@@ -4,8 +4,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import searchengine.config.Page;
-import searchengine.model.PageEntity;
 import searchengine.repositories.PageRepository;
 import searchengine.services.IndexingService;
 import searchengine.services.PageService;

@@ -9,14 +9,9 @@ import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.repositories.PageRepository;
 
-import javax.print.Doc;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.RecursiveAction;
-import java.util.concurrent.RecursiveTask;
-import java.util.stream.Collectors;
+import java.util.concurrent.*;
 
 public class CrawTask extends RecursiveAction {
 
@@ -25,16 +20,20 @@ public class CrawTask extends RecursiveAction {
     private final int maxDepth;
     private final Set<String> links;
     private final Set<String> visitedLinks;
-    private static List<Page> allPagesList = new CopyOnWriteArrayList<>();
+    private static List<Page> allPagesList = Collections.synchronizedList(new ArrayList<>());
 
-    //private Document document;
+    private SiteEntity siteEntity;
 
-    public CrawTask(String url, int depth, int maxDepth, Set<String> links, Set<String> visitedLinks) {
+    private PageRepository pageRepository;
+
+    public CrawTask(String url, int depth, int maxDepth, Set<String> links, Set<String> visitedLinks, PageRepository pageRepository) {
         this.url = url;
         this.depth = depth;
         this.maxDepth = maxDepth;
         this.links = links;
         this.visitedLinks = visitedLinks;
+        this.siteEntity = new SiteEntity();
+        this.pageRepository = pageRepository;
     }
 
     public static List<Page> getAllPagesList() {
@@ -50,7 +49,6 @@ public class CrawTask extends RecursiveAction {
             visitedLinks.add(url);
         }
 
-        int statusCode = 0;
         Document document;
 
         try {
@@ -61,22 +59,34 @@ public class CrawTask extends RecursiveAction {
                     .get();
 
             String contentType = document.connection().response().contentType();
-            statusCode = document.connection().response().statusCode();
+            int statusCode = document.connection().response().statusCode();
+
+            if (statusCode == 200 && contentType != null && !contentType.contains("text/html")) {
+                return;
+            }
 
             Elements linkOnPage = document.select("a[href]");
 
             for (Element element : linkOnPage) {
                 String absUrl = element.attr("abs:href");
+
+                if (!absUrl.isEmpty() && !visitedLinks.contains(absUrl)) {
+                    links.add(absUrl);
+                    processPage(absUrl, statusCode, element);
+                }
+
                 Page page = new Page();
                 page.setPath(absUrl);
                 page.setCode(statusCode);
                 if (contentType != null && contentType.matches("^(text/|application/(?!json).*|application/xml).*")) {
-                    if (absUrl.startsWith("http://") || absUrl.startsWith("https://")) {
-                        page.setContent(element.text());
-                    }
+
+                    page.setContent(element.text());
+
                 }
-                allPagesList.add(page);
-                new CrawTask(absUrl, depth + 1, maxDepth, links, visitedLinks);
+                saveToDatabasePageEntity(page, siteEntity);
+
+                List<CrawTask> subTasks = createSubTasks();
+                invokeAll(subTasks);
             }
 
             Thread.sleep(2000);
@@ -88,52 +98,43 @@ public class CrawTask extends RecursiveAction {
         }
     }
 
-    public static void createMapUniqueLinks(SiteEntity siteEntity, PageRepository pageRepository) {
-        Map<String, Set<String>> values = new HashMap<>();
-        Map<String, String> resultMap = new HashMap<>();
-        String contentValue = "";
+    private void saveToDatabasePageEntity(Page page, SiteEntity siteEntity) {
 
-        List<Page> result = getAllPagesList();
-        for (Page page : result) {
-            String pathValue = page.getPath();
-            contentValue = page.getContent();
-            int code = page.getCode();
-            values.computeIfAbsent(pathValue, p -> new HashSet<>()).add(contentValue);
-
-            resultMap = preparingConservationToPageEntity(values);
-
-            saveToDatabasePageEntity(resultMap, code, siteEntity, pageRepository);
+        if (page == null || siteEntity == null || page.getPath() == null || page.getPath().isEmpty()) {
+            throw new IllegalArgumentException("Page, SiteEntity или путь Page не должны быть null или пустыми");
         }
-    }
 
-    private static Map<String, String> preparingConservationToPageEntity(Map<String, Set<String>> inputMap) {
-        Map<String, String> outputMap = new HashMap<>();
+        Optional<PageEntity> existingPageEntity = pageRepository.findByUrl(page.getPath());
 
-        for (Map.Entry<String, Set<String>> entry : inputMap.entrySet()) {
-            String key = entry.getKey();
-            String values = entry.getValue()
-                    .stream()
-                    .collect(Collectors.joining(", "));
+        if (existingPageEntity.isPresent()) {
+            PageEntity pageEntity = existingPageEntity.get();
+            pageEntity.setContent(page.getContent());
+            pageEntity.setCode(page.getCode());
+            pageRepository.save(pageEntity);
 
-            outputMap.put(key, values);
-
-        }
-        return outputMap;
-    }
-
-    private static void saveToDatabasePageEntity(Map<String, String> componentsPages, int codePage,
-                                                 SiteEntity siteEntity, PageRepository pageRepository) {
-        for (Map.Entry<String, String> entry : componentsPages.entrySet()) {
-            String path = entry.getKey();
-            String content = entry.getValue();
-            PageEntity pageEntity = new PageEntity();
-            pageEntity.setPath(path);
-            pageEntity.setContent(content);
-            pageEntity.setCode(codePage);
-            pageEntity.setSiteEntity(siteEntity);
-
+        } else {
+            PageEntity pageEntity = Converter.toPageEntity(page, siteEntity);
             pageRepository.save(pageEntity);
         }
     }
 
+    private void processPage(String absUrl, int statusCode, Element element) {
+        Page page = new Page();
+        page.setPath(absUrl);
+        page.setCode(statusCode);
+        page.setContent(element.text());
+
+        saveToDatabasePageEntity(page, siteEntity);
+    }
+
+
+    private List<CrawTask> createSubTasks() {
+        List<CrawTask> subTasks = new ArrayList<>();
+        for (String urlLink : links) {
+            if (!visitedLinks.contains(urlLink)) {
+                subTasks.add(new CrawTask(urlLink, depth + 1, maxDepth, links, visitedLinks, pageRepository));
+            }
+        }
+        return subTasks;
+    }
 }
