@@ -20,7 +20,6 @@ public class CrawTask extends RecursiveAction {
     private final int maxDepth;
     private final Set<String> links;
     private final Set<String> visitedLinks;
-    private static List<Page> allPagesList = Collections.synchronizedList(new ArrayList<>());
 
     private SiteEntity siteEntity;
 
@@ -36,19 +35,21 @@ public class CrawTask extends RecursiveAction {
         this.pageRepository = pageRepository;
     }
 
-    public static List<Page> getAllPagesList() {
-        return allPagesList;
-    }
-
     @Override
     protected void compute() {
         if (depth > maxDepth || visitedLinks.contains(url)) {
             return;
         }
         synchronized (visitedLinks) {
-            visitedLinks.add(url);
+            if (visitedLinks.add(url)) {
+                processUrl();
+            } else {
+                System.out.println("Ссылка '" + url + "' уже была посещена.");
+            }
         }
+    }
 
+    private void processUrl() {
         Document document;
 
         try {
@@ -58,75 +59,35 @@ public class CrawTask extends RecursiveAction {
                     .referrer("http://www.google.com")
                     .get();
 
-            String contentType = document.connection().response().contentType();
-            int statusCode = document.connection().response().statusCode();
+            handleResponse(document);
 
-            if (statusCode == 200 && contentType != null && !contentType.contains("text/html")) {
-                return;
-            }
-
-            Elements linkOnPage = document.select("a[href]");
-
-            for (Element element : linkOnPage) {
-                String absUrl = element.attr("abs:href");
-
-                if (!absUrl.isEmpty() && !visitedLinks.contains(absUrl)) {
-                    links.add(absUrl);
-                    processPage(absUrl, statusCode, element);
-                }
-
-                Page page = new Page();
-                page.setPath(absUrl);
-                page.setCode(statusCode);
-                if (contentType != null && contentType.matches("^(text/|application/(?!json).*|application/xml).*")) {
-
-                    page.setContent(element.text());
-
-                }
-                saveToDatabasePageEntity(page, siteEntity);
-
-                List<CrawTask> subTasks = createSubTasks();
-                invokeAll(subTasks);
-            }
-
-            Thread.sleep(2000);
+            Thread.sleep(2000); // Ожидаем между запросами
 
         } catch (IOException e) {
-            System.out.println("access error '" + url + "': " + e.getMessage());
+            System.out.println("Access error '" + url + "': " + e.getMessage());
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt(); // Восстанавливаем статус прерывания
         }
     }
 
-    private void saveToDatabasePageEntity(Page page, SiteEntity siteEntity) {
+    private void handleResponse(Document document) {
+        int statusCode = document.connection().response().statusCode();
+        String contentType = document.connection().response().contentType();
 
-        if (page == null || siteEntity == null || page.getPath() == null || page.getPath().isEmpty()) {
-            throw new IllegalArgumentException("Page, SiteEntity или путь Page не должны быть null или пустыми");
+        if (statusCode != 200 || contentType == null || contentType.contains("text/html")) {
+            return;
         }
 
-        Optional<PageEntity> existingPageEntity = pageRepository.findByUrl(page.getPath());
-
-        if (existingPageEntity.isPresent()) {
-            PageEntity pageEntity = existingPageEntity.get();
-            pageEntity.setContent(page.getContent());
-            pageEntity.setCode(page.getCode());
-            pageRepository.save(pageEntity);
-
-        } else {
-            PageEntity pageEntity = Converter.toPageEntity(page, siteEntity);
-            pageRepository.save(pageEntity);
+        Elements linkOnPage = document.select("a[href]");
+        for (Element element : linkOnPage) {
+            String absUrl = element.attr("abs:href");
+            if (!absUrl.isEmpty() && visitedLinks.add(absUrl)) {
+                links.add(absUrl);
+                processPage(absUrl, statusCode, element);
+                invokeAll(createSubTasks());
+            }
         }
     }
-
-    private void processPage(String absUrl, int statusCode, Element element) {
-        Page page = new Page();
-        page.setPath(absUrl);
-        page.setCode(statusCode);
-        page.setContent(element.text());
-
-        saveToDatabasePageEntity(page, siteEntity);
-    }
-
 
     private List<CrawTask> createSubTasks() {
         List<CrawTask> subTasks = new ArrayList<>();
@@ -137,4 +98,53 @@ public class CrawTask extends RecursiveAction {
         }
         return subTasks;
     }
+
+    private void processPage(String absUrl, int statusCode, Element element) {
+        Page page = new Page();
+        page.setPath(absUrl);
+        page.setCode(statusCode);
+        page.setContent(element.text());
+
+        System.out.println("Сохраняем страницу: " + page.getPath());
+
+        saveToDatabasePageEntity(page, siteEntity);
+    }
+
+    private void saveToDatabasePageEntity(Page page, SiteEntity siteEntity) {
+
+        System.out.println("Вызывается сохранение для страницы: " + page.getPath());
+
+        validatePageEntity(page, siteEntity);
+        System.out.println("Сохраняем страницу: " + page.getPath());
+
+        Optional<PageEntity> existingPageEntity = pageRepository.findByUrl(page.getPath());
+
+        if (existingPageEntity.isPresent()) {
+
+            updateExistingPageEntity(existingPageEntity.get(), page);
+            System.out.println("Обновлена существующая страница: " + page.getPath());
+
+        } else {
+            System.out.println("Сохраняем новую страницу: " + page.getPath());
+            createNewPageEntity(page, siteEntity);
+        }
+    }
+
+    private void validatePageEntity(Page page, SiteEntity siteEntity) {
+        if (page == null || siteEntity == null || page.getPath() == null || page.getPath().isEmpty()) {
+            throw new IllegalArgumentException("Page, SiteEntity или путь Page не должны быть null или пустыми");
+        }
+    }
+
+    private void updateExistingPageEntity(PageEntity existingPageEntity, Page page) {
+        existingPageEntity.setContent(page.getContent());
+        existingPageEntity.setCode(page.getCode());
+        pageRepository.save(existingPageEntity);
+    }
+
+    private void createNewPageEntity(Page page, SiteEntity siteEntity) {
+        PageEntity pageEntity = Converter.toPageEntity(page, siteEntity);
+        pageRepository.save(pageEntity);
+    }
+
 }

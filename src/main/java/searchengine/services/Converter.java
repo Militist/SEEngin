@@ -12,14 +12,12 @@ public class Converter {
             throw new IllegalArgumentException("Site cannot be null");
         }
 
-        SiteEntity siteEntity = new SiteEntity();
-
         String url = site.getUrl();
-        if (url == null || !isValidUrl(url)) {
-            System.err.println("Malformed URL detected: " + url);
-            throw new IllegalArgumentException("Malformed URL: " + url);
+        if (url == null || !isValidUrl(url) || site.getName() == null || site.getName().isEmpty()) {
+            throw new IllegalArgumentException("Malformed site data: " + (url != null ? url : "null URL") + ", name: " + site.getName());
         }
 
+        SiteEntity siteEntity = new SiteEntity();
         siteEntity.setUrl(url);
         siteEntity.setName(site.getName());
 

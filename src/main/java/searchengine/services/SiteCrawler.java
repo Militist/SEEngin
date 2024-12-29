@@ -11,12 +11,13 @@ public class SiteCrawler {
     private Set<String> links;
     private Set<String> visitedLinks;
     private final int maxDepth;
-    private PageRepository pageRepository;
+    private final PageRepository pageRepository;
 
-    public SiteCrawler(int maxDepth) {
+    public SiteCrawler(int maxDepth, PageRepository pageRepository) {
         this.maxDepth = maxDepth;
         this.links = new HashSet<>();
         this.visitedLinks = new HashSet<>();
+        this.pageRepository = pageRepository;
     }
 
     public Set<String> getLinks() {

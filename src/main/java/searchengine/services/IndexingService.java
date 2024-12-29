@@ -32,7 +32,6 @@ public class IndexingService {
     private final ExecutorService executorService = Executors.newCachedThreadPool();
     @Autowired
     private SitesList sitesList;
-    private SiteEntity siteEntity;
 
     public void indexAllSites() {
 
@@ -46,7 +45,6 @@ public class IndexingService {
         System.out.println("Starting indexing all sites from thread: " + Thread.currentThread().getName());
 
         for (Site site : sites) {
-
             executorService.submit(() -> {
                 try {
                     indexSite(site);
@@ -63,6 +61,7 @@ public class IndexingService {
         Queue<String> toVisit = new LinkedList<>();
 
         String siteUrl = site.getUrl();
+
         if (siteUrl == null) {
             System.err.println("URL равен null для site: " + site.getName());
             return;
@@ -89,7 +88,7 @@ public class IndexingService {
                 System.out.println("Обработка URL: " + currentUrl);
                 siteRepository.save(siteEntity);
 
-                SiteCrawler crawler = new SiteCrawler(maxDepth);
+                SiteCrawler crawler = new SiteCrawler(maxDepth, pageRepository);
                 try {
                     if (isSiteAvailable(currentUrl)) {
                         crawler.getPageLinks(currentUrl);
@@ -154,7 +153,7 @@ public class IndexingService {
             connection.setConnectTimeout(5000);
             connection.setReadTimeout(5000);
             int responseCode = connection.getResponseCode();
-            return responseCode == 200;
+            return responseCode >= 200 && responseCode < 400;
         } catch (IOException e) {
             System.out.println("Сайт недоступен URL: " + url);
             return false;

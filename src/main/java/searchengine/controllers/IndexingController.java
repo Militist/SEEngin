@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.*;
 
 import searchengine.repositories.PageRepository;
 import searchengine.services.IndexingService;
-import searchengine.services.PageService;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,8 +18,6 @@ public class IndexingController {
 
     @Autowired
     private IndexingService indexingService;
-    @Autowired
-    private PageService pageService;
     @Autowired
     private PageRepository pageRepository;
 
@@ -76,26 +73,26 @@ public class IndexingController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/indexPage")
-    public ResponseEntity<Map<String, Object>> addOrUpdatePage(@RequestParam String url) {
-        if (!pageService.doesPageExist(url)) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "result", false,
-                    "error", "Данная страница находится за пределами сайтов, \n" +
-                            "указанных в конфигурационном файле\n" + url
-            ));
-        }
-        return ResponseEntity.ok(Map.of("result", true));
-
-    }
-
-    @GetMapping("/identityPages")
-    public ResponseEntity<List<String>> identityPages(@RequestParam String url) {
-        List<String> duplicatedPages = pageService.getListPages(url);
-
-        if (duplicatedPages.isEmpty()) {
-            return ResponseEntity.ok(List.of("No duplicate pages found."));
-        }
-        return ResponseEntity.ok(duplicatedPages);
-    }
+//    @PostMapping("/indexPage")
+//    public ResponseEntity<Map<String, Object>> addOrUpdatePage(@RequestParam String url) {
+//        if (!pageService.doesPageExist(url)) {
+//            return ResponseEntity.badRequest().body(Map.of(
+//                    "result", false,
+//                    "error", "Данная страница находится за пределами сайтов, \n" +
+//                            "указанных в конфигурационном файле\n" + url
+//            ));
+//        }
+//        return ResponseEntity.ok(Map.of("result", true));
+//
+//    }
+//
+//    @GetMapping("/identityPages")
+//    public ResponseEntity<List<String>> identityPages(@RequestParam String url) {
+//        List<String> duplicatedPages = pageService.getListPages(url);
+//
+//        if (duplicatedPages.isEmpty()) {
+//            return ResponseEntity.ok(List.of("No duplicate pages found."));
+//        }
+//        return ResponseEntity.ok(duplicatedPages);
+//    }
 }

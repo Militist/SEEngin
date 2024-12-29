@@ -4,6 +4,8 @@ import lombok.Data;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "site")
@@ -28,4 +30,7 @@ public class SiteEntity {
 
     @Column(name = "name", columnDefinition = "TEXT")
     private String name;
+
+    @OneToMany(mappedBy = "siteEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<PageEntity> pages = new ArrayList<>();
 }
