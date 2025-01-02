@@ -12,12 +12,14 @@ public class SiteCrawler {
     private Set<String> visitedLinks;
     private final int maxDepth;
     private final PageRepository pageRepository;
+    private final SiteEntity savedEntity;
 
-    public SiteCrawler(int maxDepth, PageRepository pageRepository) {
+    public SiteCrawler(int maxDepth, PageRepository pageRepository, SiteEntity savedEntity) {
         this.maxDepth = maxDepth;
         this.links = new HashSet<>();
         this.visitedLinks = new HashSet<>();
         this.pageRepository = pageRepository;
+        this.savedEntity = savedEntity;
     }
 
     public Set<String> getLinks() {
@@ -26,6 +28,6 @@ public class SiteCrawler {
 
     public void getPageLinks(String startUrl) {
         ForkJoinPool poll = new ForkJoinPool();
-        poll.invoke(new CrawTask(startUrl, 0, maxDepth, links, visitedLinks, pageRepository));
+        poll.invoke(new CrawTask(startUrl, 0, maxDepth, links, visitedLinks, pageRepository, savedEntity));
     }
 }

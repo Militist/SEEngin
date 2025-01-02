@@ -29,6 +29,9 @@ public class IndexingService {
     @Autowired
     private PageRepository pageRepository;
 
+    @Autowired
+    private PageService pageService;
+
     private final ExecutorService executorService = Executors.newCachedThreadPool();
     @Autowired
     private SitesList sitesList;
@@ -86,9 +89,9 @@ public class IndexingService {
             while (!toVisit.isEmpty()) {
                 currentUrl = toVisit.poll();
                 System.out.println("Обработка URL: " + currentUrl);
-                siteRepository.save(siteEntity);
+                SiteEntity savedEntity = siteRepository.save(siteEntity);
 
-                SiteCrawler crawler = new SiteCrawler(maxDepth, pageRepository);
+                SiteCrawler crawler = new SiteCrawler(maxDepth, pageRepository, savedEntity);
                 try {
                     if (isSiteAvailable(currentUrl)) {
                         crawler.getPageLinks(currentUrl);
@@ -104,6 +107,7 @@ public class IndexingService {
 
             siteEntity.setType(Status.INDEXED);
             siteEntity.setStatusTime(LocalDateTime.now());
+            siteEntity.setPages(pageService.getAllPages());
             siteRepository.save(siteEntity);
             System.out.println("Saved site successfully: " + site);
 

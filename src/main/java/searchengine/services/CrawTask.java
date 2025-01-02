@@ -21,18 +21,19 @@ public class CrawTask extends RecursiveAction {
     private final Set<String> links;
     private final Set<String> visitedLinks;
 
-    private SiteEntity siteEntity;
+    private SiteEntity savedEntity;
 
     private PageRepository pageRepository;
 
-    public CrawTask(String url, int depth, int maxDepth, Set<String> links, Set<String> visitedLinks, PageRepository pageRepository) {
+    public CrawTask(String url, int depth, int maxDepth, Set<String> links, Set<String> visitedLinks,
+                    PageRepository pageRepository, SiteEntity savedEntity) {
         this.url = url;
         this.depth = depth;
         this.maxDepth = maxDepth;
         this.links = links;
         this.visitedLinks = visitedLinks;
-        this.siteEntity = new SiteEntity();
         this.pageRepository = pageRepository;
+        this.savedEntity = savedEntity;
     }
 
     @Override
@@ -61,12 +62,12 @@ public class CrawTask extends RecursiveAction {
 
             handleResponse(document);
 
-            Thread.sleep(2000); // Ожидаем между запросами
+            Thread.sleep(2000);
 
         } catch (IOException e) {
             System.out.println("Access error '" + url + "': " + e.getMessage());
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt(); // Восстанавливаем статус прерывания
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -93,7 +94,7 @@ public class CrawTask extends RecursiveAction {
         List<CrawTask> subTasks = new ArrayList<>();
         for (String urlLink : links) {
             if (!visitedLinks.contains(urlLink)) {
-                subTasks.add(new CrawTask(urlLink, depth + 1, maxDepth, links, visitedLinks, pageRepository));
+                subTasks.add(new CrawTask(urlLink, depth + 1, maxDepth, links, visitedLinks, pageRepository, savedEntity));
             }
         }
         return subTasks;
@@ -107,7 +108,7 @@ public class CrawTask extends RecursiveAction {
 
         System.out.println("Сохраняем страницу: " + page.getPath());
 
-        saveToDatabasePageEntity(page, siteEntity);
+        saveToDatabasePageEntity(page, savedEntity);
     }
 
     private void saveToDatabasePageEntity(Page page, SiteEntity siteEntity) {
